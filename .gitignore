@@ -1,0 +1,11 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+config.bak-*.yaml
+extension/config.js
+*.part
+data/
+ComfyUI_windows_portable/
+assets/fonts/*.ttf

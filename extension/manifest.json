@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "PTO Uploader (local)",
+  "version": "0.1.0",
+  "description": "Private helper for your local PTO bot: fills print-on-demand upload forms in this Chrome profile. Talks only to 127.0.0.1.",
+  "permissions": ["alarms", "scripting", "tabs", "notifications", "storage"],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "https://www.redbubble.com/*",
+    "https://www.teepublic.com/*",
+    "https://displate.com/*"
+  ],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "icons": { "128": "icon.png" },
+  "action": { "default_title": "PTO Uploader", "default_popup": "popup.html", "default_icon": "icon.png" }
+}

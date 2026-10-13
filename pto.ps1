@@ -1,0 +1,3 @@
+# Wrapper so you can run:  .\pto.ps1 serve | doctor | generate --count 2 | login redbubble | ...
+& "$PSScriptRoot\.venv\Scripts\python.exe" -m pto @args
+exit $LASTEXITCODE

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PTO Bot</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div class="brand">PTO Bot</div>
+  <div id="pills" class="pills"></div>
+  <div class="actions">
+    <button id="btn-pause"></button>
+    <button data-run="trends">Fetch trends</button>
+    <button data-run="night">Generate now</button>
+    <button data-run="uploads">Upload now</button>
+    <button id="btn-stop" class="ghost">Stop generation</button>
+  </div>
+</header>
+<nav id="tabs">
+  <button data-tab="overview" class="active">Overview</button>
+  <button data-tab="designs">Designs</button>
+  <button data-tab="trends">Trends</button>
+  <button data-tab="uploads">Uploads</button>
+  <button data-tab="logs">Logs</button>
+  <button data-tab="settings">Settings</button>
+</nav>
+<main>
+  <section id="tab-overview" class="tab active">
+    <div id="stats" class="stats"></div>
+    <h2>Platforms</h2>
+    <div id="platforms" class="cards"></div>
+    <h2>Schedule</h2>
+    <div id="jobs" class="table-wrap"></div>
+    <h2>Latest ready designs</h2>
+    <div id="latest" class="grid"></div>
+  </section>
+  <section id="tab-designs" class="tab">
+    <div class="filters">
+      <select id="f-status">
+        <option value="">All statuses</option><option>ready</option><option>planned</option><option>rendering</option>
+        <option>failed</option><option>retired</option>
+      </select>
+      <select id="f-kind"><option value="">Stickers + posters</option><option>sticker</option><option>poster</option></select>
+    </div>
+    <div id="designs" class="grid"></div>
+  </section>
+  <section id="tab-trends" class="tab"><div id="trends" class="table-wrap"></div></section>
+  <section id="tab-uploads" class="tab"><div id="uploads" class="table-wrap"></div></section>
+  <section id="tab-logs" class="tab"><pre id="logs"></pre></section>
+  <section id="tab-settings" class="tab">
+    <h2>Platform logins</h2>
+    <p class="muted">Extension mode: opens the login page as a tab in your everyday Chrome profile; uploads use that session.
+      (Bot-profile mode: opens a separate window; log in, then close it.)</p>
+    <div class="row">
+      <button data-login="redbubble">Log in to Redbubble</button>
+      <button data-login="teepublic">Log in to TeePublic</button>
+      <button data-login="displate">Log in to Displate</button>
+    </div>
+    <h2>Check upload forms</h2>
+    <p class="muted">Opens the upload page in a background tab and records its fields (nothing is submitted). Results appear in the Logs tab.</p>
+    <div class="row">
+      <button data-inspect="redbubble">Inspect Redbubble form</button>
+    </div>
+    <h2>config.yaml</h2>
+    <p class="muted">Saved with a timestamped backup. Schedule changes apply after restarting the bot.</p>
+    <textarea id="config" spellcheck="false"></textarea>
+    <div class="row"><button id="btn-save">Save config</button><span id="save-msg" class="muted"></span></div>
+  </section>
+</main>
+<dialog id="detail"><div id="detail-body"></div><form method="dialog"><button class="ghost">Close</button></form></dialog>
+<script src="/static/app.js"></script>
+</body>
+</html>

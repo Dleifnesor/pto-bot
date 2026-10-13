@@ -1,0 +1,268 @@
+# PTO print-on-demand bot configuration.
+# Edit here or in the dashboard (Settings tab). Secrets live in .env, not here.
+
+paths:
+  data_dir: E:/PTO-data                      # db, designs, logs, browser profiles, models
+  comfyui_dir: D:/ComfyUI_windows_portable
+
+comfyui:
+  url: http://127.0.0.1:8188
+  autostart: true          # launch ComfyUI when the night run starts (if it's not already running)
+  stop_after_run: true     # shut it down after, so the GPU is free for games/VR
+  upscale_model: RealESRGAN_x4plus.pth   # BSD-3 licensed; 1024 -> 4096 px
+  refine_foreground: true  # removes white/colored halos around cutouts
+
+ollama:
+  url: http://127.0.0.1:11434
+  model: qwen3-vl:8b-instruct # trend scoring, concepts, titles, tags
+  vision_model: qwen3-vl:8b-instruct   # image QA (non-thinking variant: fast, clean JSON)
+
+schedule:
+  generation_window: {start: "01:00", end: "08:00"}   # GPU is only used inside this window
+  upload_window: {start: "09:00", end: "23:00"}       # uploads are spread out across this window
+  trend_refresh_hours: 6
+  designs_per_day: 10          # each design goes to every enabled platform
+  upload_tick_minutes: 5
+
+trends:
+  regions: [US, GB, CA, AU]
+  google_trends: true          # trends.google.com daily trending RSS (no key)
+  reddit:
+    enabled: true              # public RSS; set REDDIT_CLIENT_ID/SECRET in .env to use the API instead
+    subreddits: [popular, wholesomememes, memes, aww, cats, dogs, MadeMeSmile, gardening, camping, Coffee]
+    sort: hot
+    per_sub: 12
+  youtube: true                # only runs when YOUTUBE_API_KEY is set in .env
+  # Pop culture: designs are INSPIRED by these (genre, mood, fan life) and never use titles, characters or logos.
+  steam: true                  # popular upcoming games (with release dates) + current top sellers, no key
+  tmdb: true                   # upcoming / now-playing movies + trending TV; needs TMDB_API_KEY in .env
+  wikipedia: true              # yesterday's most-read pages, filtered to media/events (no people, no tragedies)
+  events: true                 # built-in calendar: awards nights, conventions, sports-season starts, meteor showers...
+  popculture_lead_days: 28     # releases/events enter the queue 3-4 weeks ahead
+  popculture_recent_days: 10   # ...and stay eligible 10 days after release
+  popculture_share: 0.7        # ~70% of each night's picks come from the pop-culture sources
+  seasonal: true               # holiday calendar; designs go up ~2 months ahead
+  seasonal_lead_days: 60
+  evergreen: true
+  evergreen_per_run: 4
+  evergreen_niches:
+    - cats
+    - dogs
+    - frogs
+    - mushrooms and cottagecore
+    - coffee lovers
+    - houseplants
+    - camping and hiking
+    - book lovers
+    - nurses
+    - teachers
+    - software developers
+    - gardening
+    - fishing
+    - introvert humor
+    - gym and fitness humor
+    - capybaras
+    - axolotls
+    - space and astronauts
+    - retro gaming (generic, no brands)
+    - tarot and celestial
+  max_age_hours: 48
+  allow_politics: false
+  # Trends containing these words are dropped before the LLM sees them (tragedies don't sell and get reported).
+  sensitive_keywords: [earthquake, tsunami, shooting, shooter, killed, dies, died, death, dead, obituary, funeral,
+    murder, homicide, arrested, arrest, charged, sentenced, crash, collision, explosion, wildfire, flood,
+    hurricane, tornado, war, missile, attack, terror, hostage, overdose, cancer, suicide, abuse, assault,
+    stabbing, missing, lawsuit, scandal, recall, layoffs, outage, injury, injured, victims]
+  # Regexes (case-insensitive) for trends that never make merch: sports fixtures, live TV, prices, lotteries.
+  skip_patterns: ['\bvs?\.?\b', '\bscores?\b', '\bodds\b', '\bstocks?\b', '\bshares\b', '\bprice\b', '\bweather\b',
+    '\blive\b', '\bresults?\b', '\bnews\b', '\bschedule\b', '\btickets?\b', '\blottery\b', '\bpowerball\b', '\bdraft\b',
+    '\bstandings\b', '\bfixtures?\b', '\bhighlights\b']
+  # Extra names the IP filter must never put in a listing (the LLM also detects protected names per trend).
+  ip_blocklist: [disney, pixar, marvel, star wars, pokemon, nintendo, mario, zelda, sanrio, hello kitty,
+    barbie, lego, nfl, nba, mlb, nhl, fifa, coca-cola, nike, adidas, harry potter, hogwarts, taylor swift,
+    swiftie, minecraft, fortnite, roblox, sonic, studio ghibli, totoro, spongebob, peanuts, snoopy,
+    looney tunes, dc comics, batman, superman, spider-man, stranger things, labubu, bluey, squishmallow]
+
+# Character research: before writing concepts for a film / show / game trend, the bot reads its Wikipedia article
+# (premise, setting, cast/characters) so prompts are specific to that world. For unlicensed media the character
+# names, titles and actors it finds are added to the IP filter, and designs stay generic ("inspired by").
+research:
+  enabled: true
+  max_characters: 8
+  # Franchises you have permission to sell fan art of. Only these get named characters in prompts, titles and tags,
+  # and their designs are posted ONLY to the listed platforms. Redbubble's Fan Art Partner Program, for example,
+  # approves each design per brand and covers Redbubble only, not TeePublic, Etsy or Displate.
+  licensed_franchises: []
+  #  - name: Example Saga                    # shown in the dashboard, passed to the LLM
+  #    match: [example saga, example saga ii] # trends / Wikipedia pages containing any of these belong to it
+  #    platforms: [redbubble]
+  #    required_tags: [examplesagafanart]    # tags from the brand's guidelines (they go first)
+  #    guidelines: "characters only, no logos, no gore"
+  #    wiki: examplesaga.fandom.com          # optional: character appearance details from the Fandom wiki
+
+# Shared negative prompts (YAML anchors, referenced below with *name; this block itself is ignored by the bot).
+prompt_snippets:
+  neg: &neg "text, letters, words, typography, watermark, signature, logo, brand logo, frame, border, white outline, sticker sheet, multiple copies, cropped, cut off, out of frame, floor, cast shadow, gradient background, blurry, lowres, jpeg artifacts, deformed, extra limbs, extra fingers"
+  # for single-subject stickers: also forbid scenery, which the background remover can't separate from the subject
+  neg_isolated: &neg_iso "text, letters, words, typography, watermark, signature, logo, brand logo, frame, border, white outline, sticker sheet, multiple copies, cropped, cut off, out of frame, scenery, landscape, environment, background scenery, night sky, moon, stars, trees, many objects, scattered objects, pattern, wallpaper, crowd, floor, cast shadow, gradient background, blurry, lowres, jpeg artifacts, deformed, extra limbs, extra fingers"
+
+# One ComfyUI setup per style. Base model + LoRAs + prompt template + sampler settings.
+# Isolation words go FIRST in the prefix: SDXL weighs early tokens most, and a busy background ruins the cutout.
+styles:
+  kawaii:
+    description: Chibi / kawaii cute characters, pastel colors
+    checkpoint: DreamShaperXL_Lightning.safetensors
+    loras: [{name: CuteCartoonRedmond-CuteCartoon-CuteCartoonAF.safetensors, strength: 0.65}]
+    prefix: "CuteCartoonAF, single isolated character on a plain white background, cute kawaii cartoon sticker illustration of"
+    suffix: "chibi proportions, big sparkly eyes, soft pastel colors, thick clean dark outlines, flat cel shading, centered, entire character visible, empty white background"
+    negative: *neg_iso
+    steps: 6
+    cfg: 2.0
+    sampler: dpmpp_sde
+    scheduler: karras
+    rmbg_model: BiRefNet_toonout
+    fonts: [Fredoka.ttf, LilitaOne-Regular.ttf, Chewy-Regular.ttf, TitanOne-Regular.ttf]
+
+  meme_text:
+    description: Funny slogan + expressive cartoon (text is added by code, never by the model)
+    checkpoint: DreamShaperXL_Lightning.safetensors
+    loras: [{name: StickersRedmond.safetensors, strength: 0.45}]
+    prefix: "Stickers, single isolated subject on a plain white background, funny cartoon illustration of"
+    suffix: "exaggerated expression, bold dark outlines, vibrant flat colors, simple shapes, centered, entire subject visible, empty white background"
+    negative: *neg_iso
+    steps: 6
+    cfg: 2.0
+    sampler: dpmpp_sde
+    scheduler: karras
+    rmbg_model: BiRefNet_toonout
+    fonts: [Bangers-Regular.ttf, LuckiestGuy-Regular.ttf, Anton-Regular.ttf, PermanentMarker-Regular.ttf]
+
+  retro_badge:
+    description: 70s/80s vintage badge or emblem, sunset stripes, distressed print
+    checkpoint: DreamShaperXL_Lightning.safetensors
+    loras: [{name: LogoRedmondV2-Logo-LogoRedmAF.safetensors, strength: 0.6}]
+    prefix: "LogoRedAF, vintage retro 1970s badge emblem illustration of"
+    suffix: "circular badge composition, retro sunset stripes, subtle distressed screen print texture, limited warm palette of orange mustard teal and cream, bold outlines, centered, isolated on a plain white background"
+    negative: *neg
+    steps: 6
+    cfg: 2.0
+    sampler: dpmpp_sde
+    scheduler: karras
+    rmbg_model: BiRefNet_toonout
+    fonts: [Shrikhand-Regular.ttf, Righteous-Regular.ttf, Bungee-Regular.ttf, Pacifico-Regular.ttf]
+
+  flat_vector:
+    description: Bold flat vector / cartoon with thick outlines
+    checkpoint: DreamShaperXL_Lightning.safetensors
+    loras: [{name: LogoRedmondV2-Logo-LogoRedmAF.safetensors, strength: 0.7}]
+    prefix: "LogoRedAF, single isolated subject on a plain white background, flat vector illustration of"
+    suffix: "bold thick outlines, flat solid colors, minimal shading, clean geometric shapes, cartoon style, centered, entire subject visible, empty white background"
+    negative: *neg_iso
+    steps: 6
+    cfg: 2.0
+    sampler: dpmpp_sde
+    scheduler: karras
+    rmbg_model: BiRefNet_toonout
+    fonts: [ArchivoBlack-Regular.ttf, BebasNeue-Regular.ttf, Bungee-Regular.ttf, Anton-Regular.ttf]
+
+  realistic:
+    description: Photoreal / highly detailed subject cut out cleanly
+    checkpoint: Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors
+    loras: [{name: sdxl_lightning_8step_lora.safetensors, strength: 1.0}]
+    prefix: "highly detailed realistic photo of"
+    suffix: "studio product photography, sharp focus, single subject, centered, entire subject visible, isolated on a plain white seamless background, soft even studio lighting"
+    negative: "text, letters, watermark, signature, logo, frame, border, cropped, cut off, out of frame, busy background, blurry, lowres, deformed, extra limbs, cartoon, drawing"
+    steps: 8
+    cfg: 1.5
+    sampler: euler
+    scheduler: sgm_uniform
+    rmbg_model: BiRefNet-general
+    fonts: [Oswald.ttf, Anton-Regular.ttf, BebasNeue-Regular.ttf]
+
+  poster:
+    description: Full-background portrait wall art for Displate (1:1.4)
+    kind: poster
+    checkpoint: DreamShaperXL_Lightning.safetensors
+    prefix: "poster art, highly detailed digital illustration of"
+    suffix: "full-bleed composition filling the entire frame, rich detailed background, dramatic lighting, vibrant cohesive colors, wall art"
+    negative: "text, letters, words, typography, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed"
+    width: 832
+    height: 1216
+    steps: 6
+    cfg: 2.0
+    sampler: dpmpp_sde
+    scheduler: karras
+
+cutout:
+  target_long_side: 4500     # final PNG long side (px). Redbubble guides cite 2800+ for stickers
+  padding_px: 24
+  min_island_frac: 0.02
+  max_hole_frac: 0.002
+  edge_softness: 0.15
+
+poster:
+  enabled: auto              # auto = only generate posters while Displate is enabled
+  width: 2900
+  height: 4060
+  jpeg_quality: 95
+
+qa:
+  vision: true
+  min_score: 7               # vision model score 1-10 needed to publish
+  max_attempts: 3            # regenerate with a new seed this many times before giving up
+  min_sharpness: 40
+  max_border_touch: 0.06
+  min_coverage: 0.04
+  max_coverage: 0.92
+  max_fragments: 6
+  phash_min_distance: 8      # reject near-duplicates of earlier designs
+
+platforms:
+  redbubble:
+    enabled: true
+    live: true
+    daily_limit: 10
+    min_gap_minutes: 35
+    jitter_minutes: 30
+    max_tags: 15
+    # Optional but recommended: create ONE work by hand with exactly the products, colors and
+    # settings you want, then put its numeric ID here. Every upload copies those settings.
+    template_work_id: null
+  teepublic:
+    enabled: false           # flip on once you have an account; run `pto login teepublic` first
+    daily_limit: 5
+    max_tags: 15
+  displate:
+    enabled: false           # requires an approved Displate artist account
+    daily_limit: 3
+    max_tags: 20
+  printify:
+    enabled: false           # needs PRINTIFY_TOKEN in .env and shop_id below (`pto printify-shops`)
+    shop_id: null
+    daily_limit: 10
+    min_gap_minutes: 10
+    jitter_minutes: 10
+    profit_margin: 0.35      # Printify suggests ~40%; this is slightly cheaper
+    products:
+      - {key: sticker, blueprint_query: "Kiss-Cut Stickers", fallback_price_cents: 499}
+      - {key: tee, blueprint_query: "Unisex Heavy Cotton Tee", colors: [White, Black, Sport Grey, Navy], fallback_price_cents: 2299}
+      - {key: hoodie, blueprint_query: "Unisex Heavy Blend Hooded Sweatshirt", colors: [White, Black, Sport Grey], fallback_price_cents: 4299}
+      - {key: mug, blueprint_query: "Ceramic Mug", max_variants: 4, fallback_price_cents: 1699}
+      - {key: tote, blueprint_query: "Tote Bag", max_variants: 4, fallback_price_cents: 2199}
+
+browser:
+  # extension:  uploads run in YOUR everyday Chrome (the profile below) through the PTO Uploader extension in
+  #             D:/PTO/extension. Uses your existing logins; uploads only happen while Chrome is open.
+  # playwright: a separate bot-only browser profile in E:/PTO-data/browser-profiles (log in with `pto login`).
+  mode: extension
+  chrome_profile: "Profile 1"
+  queue_timeout_minutes: 180   # drop a job Chrome never picked up (Chrome closed); it's re-queued later
+  job_timeout_minutes: 30
+  channel: chrome              # playwright mode only: chrome | msedge
+
+notifications:
+  windows_toast: true
+
+web:
+  host: 127.0.0.1
+  port: 8765
